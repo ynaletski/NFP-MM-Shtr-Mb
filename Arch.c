@@ -1,7 +1,7 @@
 
 //-------------------------
 
-unsigned int flash_seg   =0xD000;
+unsigned int flash_seg   =0xE000;
 unsigned int flash_offset=0;
 
 struct arch_str ar_str;
@@ -32,7 +32,7 @@ char *data;
   if(ltmp >= (long int)0x10000)
   {
    flash_seg= f_get_next_seg(flash_seg);
-   flash_offset=0;
+   //flash_offset=0;
   }
  utmp=flash_offset;
  data=(char *)s_arch;
@@ -57,7 +57,7 @@ unsigned int  *Flash_ptr_i;
 
   nn=((long int)flash_offset & 0xffff) / sizeof(ar_str);
 
-  seg_tmp= f_get_prev_seg(flash_seg);
+  /*seg_tmp= f_get_prev_seg(flash_seg);
   Flash_ptr_i=(unsigned int  *) _MK_FP_(seg_tmp,(unsigned int)0);
 
   if(*Flash_ptr_i == 0xffff)
@@ -72,7 +72,7 @@ unsigned int  *Flash_ptr_i;
   {
    return nn;
   }
-  nn+=(long int)0x10000 / sizeof(ar_str);
+  nn+=(long int)0x10000 / sizeof(ar_str);*/
   return nn;
 }
 //----------------------------------
@@ -490,7 +490,7 @@ struct arch_str *ar_str_ptr;
 
  // определение начала журнала
 
-  seg_tmp= f_get_prev_seg(flash_seg);
+  /*seg_tmp= f_get_prev_seg(flash_seg);
   ar_str_ptr=(struct arch_str *) _MK_FP_(seg_tmp,(unsigned int)0);
   if(ar_str_ptr->event != 0xffff)
   {
@@ -509,7 +509,8 @@ struct arch_str *ar_str_ptr;
   }
 
 //  seg_tmp - начальный сегмент
- retf_seg=seg_tmp;
+ retf_seg=seg_tmp;*/
+ seg_tmp= flash_seg; //now
  ar_str_ptr=(struct arch_str *) _MK_FP_(seg_tmp,(unsigned int)0);
  return ar_str_ptr;
 }
@@ -740,22 +741,26 @@ unsigned long int i,i1,vd,ve;
 char  *Flash_ptr_c;
 struct arch_str *a_str;
 
- seg_tmp=0xD000;
+ seg_tmp=0xE000;
 
- vd= get_vdate((unsigned int)0xD000);
+ //24.06.2020 YN 
+ //was:
+ //vd= get_vdate((unsigned int)0xD000);
  ve= get_vdate((unsigned int)0xE000);
 
- if((vd==0)&&(ve==0))
+ //if((vd==0)&&(ve==0))
+ if(ve==0)
   {  // все секторы очищены, начало записи
-    flash_seg=0xD000;
+    flash_seg=0xE000;
     flash_offset=0;
     return;
   }
   i=0;
-  if(vd>i)
+ /* if(vd>i)
    {i=vd; seg_tmp=0xD000;}
   if(ve>i)
-   {i=ve; seg_tmp=0xE000;}
+   {i=ve; seg_tmp=0xE000;}*/
+   seg_tmp=0xE000;
 
    Flash_ptr_c=(char *) _MK_FP_(seg_tmp,(unsigned int)0);
 
@@ -766,18 +771,37 @@ struct arch_str *a_str;
       flash_offset=i;
       return;
      }
-
+    flash_offset = 65535;
     flash_seg=f_get_next_seg(seg_tmp);
-    flash_offset=0;
+    //flash_offset=0;
     return;
 }
 //-----------------
 unsigned int f_get_next_seg(unsigned int seg)
 {
 unsigned int seg_tmp;
-
+/*
  if(seg==0xD000) seg_tmp=0xE000;
- else if(seg==0xE000) seg_tmp=0xD000;
+ else if(seg==0xE000) seg_tmp=0xD000;*/
+ 
+ /*-----------------(.)(.)----------------------*/
+int i,j;
+char data_buf[(sizeof(ar_str)*200)-1];
+
+for (j = 0; j < (sizeof(ar_str)*200); j++)
+{ 
+  if (flash_offset == 65535)
+  {
+    data_buf[j] = FlashRead(flash_seg,flash_offset-j);
+  }
+  else
+  {
+    data_buf[j] = FlashRead(flash_seg,flash_offset-1-j);
+  } 
+}
+/*-----------------(*)(*)----------------------*/ 
+ 
+ seg_tmp=seg;
 
  Flash_ptr=(unsigned long int *) _MK_FP_(seg_tmp,(unsigned int)0);
  if(*Flash_ptr==0xffffffff) ;
@@ -785,10 +809,21 @@ unsigned int seg_tmp;
  {
   ICP_error[icp_lst_max] |= Flash_erase_error;
  }
+
+/*-----------------(.)(.)----------------------*/ 
+ for(i=0,j=sizeof(data_buf);i< sizeof(data_buf);i++,j--)
+   if (FlashWrite(flash_seg, i, data_buf[j-1]) != 0)
+   {
+     ICP_error[icp_lst_max] |= Flash_wr_error;
+     break;
+   }
+flash_offset = sizeof(data_buf) + 1;
+/*-----------------(*)(*)----------------------*/ 
+
  return seg_tmp;
 }
 //-------------------
-unsigned int f_get_nxt_seg(unsigned int seg)
+/*unsigned int f_get_nxt_seg(unsigned int seg)
 {
 unsigned int seg_tmp;
 
@@ -797,14 +832,15 @@ unsigned int seg_tmp;
   if(seg==0xD000) seg_tmp=0xE000;
  else if(seg==0xE000) seg_tmp=0xD000;
  return seg_tmp;
-}
+}*/
 //-------------------
 unsigned int f_get_prev_seg(unsigned int seg)
 {
 unsigned int seg_tmp;
 
- if(seg==0xD000) seg_tmp=0xE000;
- else if(seg==0xE000) seg_tmp=0xD000;
+/* if(seg==0xD000) seg_tmp=0xE000;
+ else if(seg==0xE000) seg_tmp=0xD000;*/
+ seg_tmp = seg;
 
  return seg_tmp;
 }
@@ -1135,7 +1171,7 @@ tdat->tm_mday,tdat->tm_mon+1,tdat->tm_year-100,tdat->tm_hour,tdat->tm_min,tdat->
   return 0;
 }
 //------------------------------------------
-unsigned int d_fl_seg=0xD000, d_fl_offs=0;
+unsigned int /*d_fl_seg=0xD000,*/ d_fl_offs=0;
 struct arch_str  *f_get_dat_s(time_t time_00)
 { // возвращает указатель на структуру с данными
   // или NULL ;
@@ -1218,10 +1254,5 @@ int nn;
  return retf_iii;
 
 }
-
 //----------------------------------
-
-
-
 //------------------------------------------
-
