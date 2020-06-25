@@ -790,7 +790,7 @@ char data_buf[(sizeof(ar_str)*200)-1];
 
 for (j = 0; j < (sizeof(ar_str)*200); j++)
 { 
-  if (flash_offset == 65535)
+  if (flash_offset == 65535) //0xffff
   {
     data_buf[j] = FlashRead(flash_seg,flash_offset-j);
   }
@@ -817,7 +817,7 @@ for (j = 0; j < (sizeof(ar_str)*200); j++)
      ICP_error[icp_lst_max] |= Flash_wr_error;
      break;
    }
-flash_offset = sizeof(data_buf) + 1;
+flash_offset = sizeof(data_buf);
 /*-----------------(*)(*)----------------------*/ 
 
  return seg_tmp;
